@@ -1,0 +1,14 @@
+1. Adım Mysql Phpmyadmin de veritabanı oluşturuyoruz turkhis-ci mdb4 olarak mackolik adında yada siz de belirleyebilirsiniz.
+2. Adım oluşturduğunuz veritabanın içine klosördeki sql'i aktarıyoruz.
+3. Adım sizin bilgisayarınızdaki wampp server yada linux kullanıyorsanız mysql kullanıcı adınızı şifrenizi ve veritibanı oluştururken verdiğiniz ismi mackolik.py dosyasında 22. satırdan 25. satıra kadar olan yerleri değiştirmeyi unutmayınız.
+
+belli bir süre veri tobladıktan sonra mysql veritabanına ekstra olarak bilgisayarınızda db olarak ve excel olarak saklayacaktır.
+
+4. Adım selenium sağlıklı çalışabilmesi için chrome browser sürümünü öğrenip chromedriver'i indirip windows kullanıyor iseniz PATH lamayı, Linux kullanıyor iseniz /usr/bin,/usr/local/bin klosörüne chromedriveri terminalden cp ile kopyalamayı ve kopyalmadan önce chmod +x chromedriver izin vermeyi unutmayınız.
+
+5. Adım mackolik veri toplarken myflaskapp klosöründe main.py dosyasında 9. satırdan 12. satıra kadar olan yerleri kendi ayarlarınıza göre düzeltmeyi unutmayınız Zirrraaaa çalışmayabilir.
+6. Adım güle güle kullanın sizinde artık bir iddaa oran analiz takibi yapan bir programınız var artık 
+
+DEMO OLARAK : https://4e8f-88-238-63-238.ngrok-free.app/
+
+kendime aait şuan durumum olmadığı için static ip adres alamadığımdan domain alamadığımdan ngrok bağlantısı kullanmaktayım :-)

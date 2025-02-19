@@ -1,0 +1,5 @@
+openpyxl
+pymysql
+selenium
+bs4
+requests

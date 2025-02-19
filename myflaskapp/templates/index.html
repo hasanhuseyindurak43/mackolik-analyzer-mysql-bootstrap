@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maç Bilgileri</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .card-success {
+            background-color: #28a745; /* Koyu yeşil */
+            color: white;
+        }
+
+        .card-danger {
+            background-color: #dc3545; /* Kırmızı */
+            color: white;
+        }
+        .text-success {
+            color: green !important;
+        }
+
+        .text-danger {
+            color: red !important;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+        }
+        .card-body {
+            padding: 15px;
+        }
+        .card-title {
+            font-size: 1.25rem;
+            margin-bottom: 10px;
+        }
+        .card-text {
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+        .match-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .match-info div {
+            flex: 1;
+            text-align: center;
+        }
+        .match-score, .match-ms-score {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .match-score div, .match-ms-score div {
+            flex: 1;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">Maç Bilgileri</h1>
+        <form id="dateForm" class="mb-4">
+            <div class="form-group">
+                <label for="matchType">Maç Türü</label>
+                <select id="matchType" class="form-control">
+                    <option value="all">Tüm Maçlar</option>
+                    <option value="select">Ev sahibi ve Misafir takımı ben seçmek istiyorum</option>
+                </select>
+            </div>
+            <div id="dateSelection" class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="day">Gün</label>
+                    <select id="day" class="form-control">
+                        <!-- Günler buraya eklenecek -->
+                    </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="month">Ay</label>
+                    <select id="month" class="form-control">
+                        <!-- Aylar buraya eklenecek -->
+                    </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="year">Yıl</label>
+                    <select id="year" class="form-control">
+                        <!-- Yıllar buraya eklenecek -->
+                    </select>
+                </div>
+            </div>
+            <div id="teamSelection" class="form-row hidden">
+                <div class="form-group col-md-6">
+                    <label for="ev">Ev Sahibi Takım</label>
+                    <select id="ev" class="form-control">
+                        <!-- Ev sahibi takımlar buraya eklenecek -->
+                    </select>
+                </div>
+                 <div class="form-group col-md-2 d-flex align-items-center justify-content-center">
+                    <button type="button" id="swapTeams" class="btn btn-secondary btn-sm mt-4">⇅</button>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="misafir">Misafir Takım</label>
+                    <select id="misafir" class="form-control">
+                        <!-- Misafir takımlar buraya eklenecek -->
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Maçları Getir</button>
+        </form>
+        <div id="matches" class="row">
+            <!-- Maç bilgileri buraya eklenecek -->
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="matchDetailModal" tabindex="-1" aria-labelledby="matchDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="matchDetailModalLabel">Maç Detayları</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="matchDetailBody">
+                    <!-- Maç detayları buraya eklenecek -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+    $(document).ready(function() {
+        // Gün, ay ve yıl seçeneklerini doldur
+        for (let i = 1; i <= 31; i++) {
+            $('#day').append(`<option value="${i}">${i}</option>`);
+        }
+        const months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+        months.forEach((month, index) => {
+            $('#month').append(`<option value="${index + 1}">${month}</option>`);
+        });
+        for (let i = 2025; i <= 2040; i++) {
+            $('#year').append(`<option value="${i}">${i}</option>`);
+        }
+
+        // Benzer takımı bulan kod
+        let evTeams = [];  // Ev takımları listesi
+        let misafirTeams = [];  // Misafir takımları listesi
+
+        function levenshtein(a, b) {
+            const matrix = Array(a.length + 1).fill(null).map(() =>
+                Array(b.length + 1).fill(null));
+
+            for (let i = 0; i <= a.length; i++) {
+                matrix[i][0] = i;
+            }
+            for (let j = 0; j <= b.length; j++) {
+                matrix[0][j] = j;
+            }
+
+            for (let i = 1; i <= a.length; i++) {
+                for (let j = 1; j <= b.length; j++) {
+                    const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j - 1] + cost
+                    );
+                }
+            }
+            return matrix[a.length][b.length];
+        }
+
+        // En yakın eşleşmeyi bulan fonksiyon
+        function findClosestTeam(inputTeam, teamList) {
+            let closestTeam = "";
+            let minDistance = Infinity;
+
+            teamList.forEach(team => {
+                let distance = levenshtein(inputTeam, team);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestTeam = team;
+                }
+            });
+
+            return closestTeam;
+        }
+
+        // Değiştir butonuna tıklama olayı ekle
+        $('#swapTeams').on('click', function() {
+            let evValue = $('#ev').val().trim(); // Ev takımının seçili değerini al
+            let misafirValue = $('#misafir').val().trim(); // Misafir takımının seçili değerini al
+
+            console.log("Ev Seçili Takım:", evValue);
+            console.log("Misafir Seçili Takım:", misafirValue);
+
+            // Eğer listeler dolu değilse işlemi yapma
+            if (evTeams.length === 0 || misafirTeams.length === 0) {
+                console.log("Takım listeleri boş!");
+                return;
+            }
+
+            // En yakın takım eşleşmelerini bul
+            let newEvValue = findClosestTeam(misafirValue, evTeams);
+            let newMisafirValue = findClosestTeam(evValue, misafirTeams);
+
+            console.log("Yeni Ev Takımı:", newEvValue);
+            console.log("Yeni Misafir Takımı:", newMisafirValue);
+
+            // Değerleri değiştir
+            $('#ev').val(newEvValue);
+            $('#misafir').val(newMisafirValue);
+        });
+
+        // Maç türü seçildiğinde çalıştır
+        $('#matchType').on('change', function() {
+            if ($(this).val() === 'all') {
+                $('#dateSelection').removeClass('hidden');
+                $('#teamSelection').addClass('hidden');
+            } else {
+                $('#dateSelection').addClass('hidden');
+                $('#teamSelection').removeClass('hidden');
+
+                $.ajax({
+                    url: '/get_teams',
+                    type: 'GET',
+                    success: function(response) {
+                        // Ev ve misafir takımlarını alfabetik olarak sırala
+                        response.ev.sort((a, b) => a.localeCompare(b));
+                        response.misafir.sort((a, b) => a.localeCompare(b));
+
+                        // Listeleri sakla
+                        evTeams = response.ev;
+                        misafirTeams = response.misafir;
+
+                        $('#ev').empty();
+                        $('#misafir').empty();
+                        response.ev.forEach(team => {
+                            $('#ev').append(`<option value="${team}">${team}</option>`);
+                        });
+                        response.misafir.forEach(team => {
+                            $('#misafir').append(`<option value="${team}">${team}</option>`);
+                        });
+                    },
+                    error: function() {
+                        alert('Takımlar alınırken bir hata oluştu.');
+                    }
+                });
+            }
+        });
+
+        // Form gönderildiğinde
+        $('#dateForm').on('submit', function(e) {
+            e.preventDefault();
+            const matchType = $('#matchType').val();
+            let data = {};
+
+            if (matchType === 'all') {
+                const day = $('#day').val();
+                const month = $('#month').val();
+                const year = $('#year').val();
+                data = { day: day, month: month, year: year };
+            } else {
+                const ev = $('#ev').val();
+                const misafir = $('#misafir').val();
+                data = { ev: ev, misafir: misafir };
+            }
+
+            $.ajax({
+                url: '/get_matches',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(response) {
+                    $('#matches').empty();
+                    if (response.length > 0) {
+                        response.forEach(match => {
+                            const iyScores = match.iy.split(' - ');
+                            const msScores = match.ms.split(' - ');
+
+                            $('#matches').append(`
+                                <div class="col-md-6 mb-4">
+                                    <div class="card match-card" data-ev="${match.ev}" data-misafir="${match.misafir}">
+                                        <div class="card-body">
+                                            <h5 class="card-title">${match.ev} vs ${match.misafir}</h5>
+                                            <div class="match-info">
+                                                <div>${match.ev}</div>
+                                                <div>${match.misafir}</div>
+                                            </div>
+                                            <div class="match-score">
+                                                <div>İY: ${iyScores[0]}</div>
+                                                <div>İY: ${iyScores[1]}</div>
+                                            </div>
+                                            <div class="match-ms-score">
+                                                <div>MS: ${msScores[0]}</div>
+                                                <div>MS: ${msScores[1]}</div>
+                                            </div>
+                                            <p class="card-text">Saat: ${match.saat}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `);
+                        });
+
+                        function getTurkishLabel(key) {
+                            const labels = {
+                                'ms1': 'Maç Sonucu 1',
+                                'ms2': 'Maç Sonucu 2',
+                                'msx': 'Maç Sonucu Beraberlik',
+                                'iys1': 'İlk Yarı Sonucu 1',
+                                'iys2': 'İlk Yarı Sonucu 2',
+                                'iysx': 'İlk Yarı Sonucu Beraberlik',
+                                'kgvar': 'Karşılıklı Gol Var',
+                                'kgyok': 'Karşılıklı Gol Yok',
+                                'iybirbucukalt': 'İlk Yarı Toplam Gol 1.5 Alt',
+                                'iybirbucukust': 'İlk Yarı Toplam Gol 1.5 Üst',
+                                'tgbirbucukalt': 'Toplam Gol 1.5 Alt',
+                                'tgbirbucukust': 'Toplam Gol 1.5 Üst',
+                                'tgikibucukalt': 'Toplam Gol 2.5 Alt',
+                                'tgikibucukust': 'Toplam Gol 2.5 Üst',
+                                'tgucbucukalt': 'Toplam Gol 3.5 Alt',
+                                'tgucbucukust': 'Toplam Gol 3.5 Üst',
+                                'tgsifrbir': 'Toplam Gol 0-1',
+                                'tgikiuc': 'Toplam Gol 2-3',
+                                'tgdortalti': 'Toplam Gol 4-6',
+                                'tgyedi': 'Toplam Gol 7+'
+                            };
+                            return labels[key] || key; // Eğer key listede yoksa, key'i olduğu gibi döndür
+                        }
+
+                        // Maç kartlarına tıklama olayı ekle
+                        $('.match-card').on('click', function() {
+                            const ev = $(this).data('ev');
+                            const misafir = $(this).data('misafir');
+
+                            const iyScores = $(this).find('.match-score div').map(function() {
+                                return $(this).text().split(': ')[1];
+                            }).get();
+
+                            const msScores = $(this).find('.match-ms-score div').map(function() {
+                                return $(this).text().split(': ')[1];
+                            }).get();
+
+                            const iyS1 = parseInt(iyScores[0]);
+                            const iyS2 = parseInt(iyScores[1]);
+                            const toplamIY = iyS1 + iyS2;
+
+                            const msS1 = parseInt(msScores[0]);
+                            const msS2 = parseInt(msScores[1]);
+                            const toplamMS = msS1 + msS2;
+
+                            $.ajax({
+                                url: '/get_match_details',
+                                type: 'POST',
+                                contentType: 'application/json',
+                                data: JSON.stringify({ ev: ev, misafir: misafir }),
+                                success: function(response) {
+                                    // Sıralama için istediğiniz anahtar sırasını belirleyin
+                                    const sortOrder = [
+                                        'iys1', 'iys2', 'iysx', 'iybirbucukalt', 'iybirbucukust',
+                                        'ms1', 'ms2', 'msx', 'kgvar', 'kgyok', 'tgbirbucukalt',
+                                        'tgbirbucukust', 'tgikibucukalt', 'tgikibucukust',
+                                        'tgucbucukalt', 'tgucbucukust', 'tgsifrbir', 'tgikiuc',
+                                        'tgdortalti', 'tgyedi'
+                                    ];
+
+                                    let detailHtml = '<div class="row">';
+
+                                    // Veriyi sıralama
+                                    sortOrder.forEach(function(key) {
+                                        if (response.details.hasOwnProperty(key)) {
+                                            let cardClass = '';
+                                            let colorClass = '';
+
+                                            if (key === 'iys1') {
+                                                cardClass = iyS1 > iyS2 ? 'card-success' : (iyS1 === iyS2 ? 'card-danger' : 'card-danger');
+                                            } else if (key === 'iys2') {
+                                                cardClass = iyS2 > iyS1 ? 'card-success' : (iyS2 === iyS1 ? 'card-danger' : 'card-danger');
+                                            } else if (key === 'iysx') {
+                                                cardClass = iyS1 === iyS2 ? 'card-success' : 'card-danger';
+                                            } else if (key === 'iybirbucukalt') {
+                                                cardClass = toplamIY <= 1 ? 'card-success' : 'card-danger';
+                                            } else if (key === 'iybirbucukust') {
+                                                cardClass = toplamIY > 1 ? 'card-success' : 'card-danger';
+                                            } else if (key === 'ms1') {
+                                                cardClass = msS1 > msS2 ? 'card-success' : (msS1 === msS2 ? 'card-danger' : 'card-danger');
+                                            } else if (key === 'ms2') {
+                                                cardClass = msS2 > msS1 ? 'card-success' : (msS2 === msS1 ? 'card-danger' : 'card-danger');
+                                            } else if (key == 'kgvar') {
+                                                cardClass = (msS1 > 0 && msS2 > 0) ? 'card-success' : 'card-danger';
+                                            } else if (key == 'kgyok') {
+                                                cardClass = (msS1 === 0 || msS2 === 0) ? 'card-success' : 'card-danger';
+                                            }
+                                            else if (key === 'msx') {
+                                                cardClass = msS1 === msS2 ? 'card-success' : 'card-danger';
+                                            } else if (key === 'tgbirbucukalt') {
+                                                cardClass = toplamMS <= 1 ? 'card-success' : 'card-danger';
+                                            } else if (key === 'tgbirbucukust') {
+                                                cardClass = toplamMS > 1 ? 'card-success' : 'card-danger';
+                                            } else if (key === 'tgikibucukalt') {
+                                                cardClass = toplamMS <= 2 ? 'card-success' : 'card-danger';
+                                            } else if (key === 'tgikibucukust') {
+                                                cardClass = toplamMS > 3 ? 'card-success' : 'card-danger';
+                                            } else if (key === 'tgucbucukalt') {
+                                                cardClass = toplamMS <= 3 ? 'card-success' : 'card-danger';
+                                            } else if (key === 'tgucbucukust') {
+                                                cardClass = toplamMS > 4 ? 'card-success' : 'card-danger';
+                                            } else if (key === 'tgsifrbir') {
+                                                cardClass = (toplamMS >= 0 && toplamMS <= 1) ? 'card-success' : 'card-danger';
+                                            } else if (key === 'tgikiuc') {
+                                                cardClass = (toplamMS >= 2 && toplamMS <= 3) ? 'card-success' : 'card-danger';
+                                            } else if (key === 'tgdortalti') {
+                                                cardClass = (toplamMS >= 4 && toplamMS <= 6) ? 'card-success' : 'card-danger';
+                                            } else if (key === 'tgyedi') {
+                                                cardClass = toplamMS >= 7 ? 'card-success' : 'card-danger';
+                                            }
+
+                                            detailHtml += `
+                                                <div class="col-md-6">
+                                                    <div class="card mb-2 ${cardClass}">
+                                                        <div class="card-body">
+                                                            <h6 class="card-title">${getTurkishLabel(key)}</h6>
+                                                            <p class="card-text">${response.details[key]}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }
+                                    });
+
+                                    detailHtml += '</div>';
+                                    $('#matchDetailBody').html(detailHtml);
+                                    $('#matchDetailModal').modal('show');
+                                },
+                                error: function() {
+                                    alert('Detaylar alınırken bir hata oluştu.');
+                                }
+                            });
+                        });
+                    } else {
+                        $('#matches').append('<p class="text-center">Bu tarihte maç bulunamadı.</p>');
+                    }
+                },
+                error: function() {
+                    $('#matches').html('<p class="text-center">Veriler alınırken bir hata oluştu.</p>');
+                }
+            });
+        });
+    });
+</script>
+
+</body>
+</html>
