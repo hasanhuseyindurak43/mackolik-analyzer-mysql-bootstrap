@@ -73,7 +73,7 @@ def index():
     weekly_visits = 350
     monthly_visits = 1500
 
-    return render_template('index9.html', active_users_count=active_users_count, total_users=total_users, daily_visits=daily_visits, weekly_visits=weekly_visits, monthly_visits=monthly_visits)
+    return render_template('index8.html', active_users_count=active_users_count, total_users=total_users, daily_visits=daily_visits, weekly_visits=weekly_visits, monthly_visits=monthly_visits)
 
 
 # Kayıt ol sayfası
@@ -231,24 +231,17 @@ def get_matches():
         elif 'oddsAnalysis' in data:
             odds_conditions = data['oddsAnalysis']
 
-            # Tarih aralığı filtresi (oran analizi için özel)
+            # Tarih filtresi (oran analizi için özel)
             if odds_conditions and isinstance(odds_conditions, list) and len(odds_conditions) > 0:
                 first_condition = odds_conditions[0]
-                if 'startDate' in first_condition and 'endDate' in first_condition:
-                    start_date = first_condition['startDate']
-                    end_date = first_condition['endDate']
-
-                    # Tarih formatını kontrol et (gg.aa.yyyy)
-                    try:
-                        start_day, start_month, start_year = start_date.split('.')
-                        end_day, end_month, end_year = end_date.split('.')
-
-                        # Tarih aralığı için BETWEEN kullan
-                        query += " AND STR_TO_DATE(tarih, '%d.%m.%Y') BETWEEN STR_TO_DATE(%s, '%d.%m.%Y') AND STR_TO_DATE(%s, '%d.%m.%Y')"
-                        params.extend([start_date, end_date])
-                    except:
-                        # Geçersiz tarih formatı
-                        pass
+                if 'day' in first_condition and 'month' in first_condition and 'year' in first_condition:
+                    day = first_condition['day']
+                    month = first_condition['month']
+                    year = first_condition['year']
+                    if day and month and year:
+                        date = f"{int(day):02d}.{int(month):02d}.{year}"
+                        query += " AND tarih = %s"
+                        params.append(date)
 
             # Oran tiplerini grupla
             odds_groups = {}
@@ -275,11 +268,16 @@ def get_matches():
             # Oran koşullarını sorguya ekle
             for odds_type, values in odds_groups.items():
                 # Oran tipinin geçerli bir sütun olup olmadığını kontrol et
+                # (Burada veritabanı sütunlarını kontrol edebilirsiniz)
+
+                # Aynı oran tipi için birden fazla değer varsa OR kullan
                 if len(values) > 1:
-                    or_conditions = " OR ".join([f"REPLACE(TRIM({odds_type}), ',', '.') = %s" for _ in values])
+                    or_conditions = " OR ".join([f"REPLACE(TRIM({odds_type}), ',', '.') <= %s" for _ in values])
                     query += f" AND ({or_conditions})"
                 else:
-                    query += f" AND REPLACE(TRIM({odds_type}), ',', '.') = %s"
+                    # Tek değer varsa direkt AND kullan
+                    query += f" AND REPLACE(TRIM({odds_type}), ',', '.') <= %s"
+
                 params.extend(values)
 
         # Sorguyu çalıştır

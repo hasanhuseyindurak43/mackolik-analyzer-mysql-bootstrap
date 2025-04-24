@@ -1,0 +1,908 @@
+
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maç Bilgileri</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" href="/static/icons/h.png">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+
+        .card-success {
+            background-color: #28a745; /* Koyu yeşil */
+            color: white;
+        }
+
+        .card-danger {
+            background-color: #dc3545; /* Kırmızı */
+            color: white;
+        }
+
+        .text-success {
+            color: green !important;
+        }
+
+        .text-danger {
+            color: red !important;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+        }
+        .card-body {
+            padding: 15px;
+        }
+        .card-title {
+            font-size: 1.25rem;
+            margin-bottom: 10px;
+        }
+        .card-text {
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+        .match-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .match-info div {
+            flex: 1;
+            text-align: center;
+        }
+        .match-score, .match-ms-score {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .match-score div, .match-ms-score div {
+            flex: 1;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .marquee-container {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            background: #dc3545; /* Tamamen kırmızı arka plan */
+            padding: 12px 0;
+            border-radius: 8px;
+        }
+
+        .marquee {
+            display: inline-block;
+            white-space: nowrap;
+            animation: marquee-scroll 35s linear infinite; /* Yavaşça kayan yazı */
+            font-size: 16px;
+            color: #ffffff; /* Beyaz yazı rengi */
+            font-weight: bold;
+            padding-left: 100%;
+        }
+
+        @keyframes marquee-scroll {
+            from {
+                transform: translateX(100%);
+            }
+            to {
+                transform: translateX(-100%);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Üstteki oval mavi alan -->
+    <div class="bg-primary text-white p-3 rounded-pill mx-3 my-2 d-flex justify-content-between align-items-center">
+        <div class="fw-bold fs-5 text-uppercase ms-3">
+            {% if session.get('user_id') %}
+                Hoşgeldiniz, {{ session.get('username') }}
+            {% endif %}
+        </div>
+
+        <div>
+            {% if session.get('user_id') %}
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm rounded-pill px-4">Çıkış Yap</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm rounded-pill px-4 me-2">Giriş Yap</a>
+                <a href="{{ url_for('register') }}" class="btn btn-light btn-sm rounded-pill px-4">Kayıt Ol</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="marquee-container">
+        <div class="marquee">
+            Site'de kullanılan veriler Maçkolik sitesinin Geniş Ekran bölümünden anlık çekilmektedir.
+            Oran analizi yaparken Has Oran Analiz Sitemizde bulunan oranlar "AÇILIŞ" oranları olduğunu UNUTMAYIN!
+            Bize destek olmak isterseniz lütfen sitemizde üyelik açmayı unutmayınız.
+        </div>
+    </div>
+
+
+    <div class="container mt-5">
+        <h1 class="text-center">Maç Bilgileri</h1>
+        <form id="dateForm" class="mb-4">
+            <div class="form-group">
+                <label for="matchType">Maç Türü</label>
+                <select id="matchType" class="form-control">
+                    <option value="all">Tüm Maçlar</option>
+                    <option value="select">Ev sahibi ve Misafir takımı ben seçmek istiyorum</option>
+                    <option value="customScore">İlk Yarı Sonuc Skor ve Maç Sonuç Skor ben belirlemek istiyorum</option>
+                    <option value="oddsAnalysis">Oran Belirleyerek Analiz Yapmak İstiyorum</option>
+                </select>
+            </div>
+            <div id="dateSelection" class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="day">Gün</label>
+                    <select id="day" class="form-control">
+                        <!-- Günler buraya eklenecek -->
+                    </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="month">Ay</label>
+                    <select id="month" class="form-control">
+                        <!-- Aylar buraya eklenecek -->
+                    </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="year">Yıl</label>
+                    <select id="year" class="form-control">
+                        <!-- Yıllar buraya eklenecek -->
+                    </select>
+                </div>
+            </div>
+            <div id="teamSelection" class="form-row hidden">
+                <div class="form-group col-md-6">
+                    <label for="ev">Ev Sahibi Takım</label>
+                    <select id="ev" class="form-control">
+                        <!-- Ev sahibi takımlar buraya eklenecek -->
+                    </select>
+                </div>
+                 <div class="form-group col-md-2 d-flex align-items-center justify-content-center">
+                    <button type="button" id="swapTeams" class="btn btn-secondary btn-sm mt-4">⇅</button>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="misafir">Misafir Takım</label>
+                    <select id="misafir" class="form-control">
+                        <!-- Misafir takımlar buraya eklenecek -->
+                    </select>
+                </div>
+            </div>
+
+            <div id="customScoreSelection" class="form-row hidden">
+                <div id="customScoreContainer">
+                    <!-- Buraya dinamik olarak skor setleri eklenecek -->
+                </div>
+                <div class="form-group col-md-12">
+                    <button type="button" id="addCustomScore" class="btn btn-success">Ekle</button>
+                </div>
+            </div>
+
+            <div id="oddsAnalysisSelection" class="form-row hidden">
+                <!-- Dinamik olarak eklenen oran analizleri buraya gelecek -->
+            </div>
+            <div class="form-row hidden">
+                <div class="form-group col-md-12">
+                    <button type="button" id="addOddsAnalysis" class="btn btn-success">Ekle</button>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Maçları Getir</button>
+            </form>
+            <div class="card mx-3 my-5">
+                <div class="card-body">
+                    <h5 class="card-title">Maç Sonuçları İstatistikleri</h5>
+                    <canvas id="resultChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+            <div class="card mx-3 my-5">
+                <div class="card-body">
+                    <h5>Maç Sonuçları</h5>
+                </div>
+            </div>
+            <div id="matches" class="row">
+                <!-- Maç bilgileri buraya eklenecek -->
+            </div>
+
+    </div>
+
+
+
+    <!-- Modal -->
+    <div class="modal fade" id="matchDetailModal" tabindex="-1" aria-labelledby="matchDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="matchDetailModalLabel">Maç Detayları</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="matchDetailBody">
+                    <!-- Maç detayları buraya eklenecek -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+   <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/sw.js')
+        .then((registration) => {
+          console.log('Service Worker registered with scope:', registration.scope);
+        })
+        .catch((error) => {
+          console.log('Service Worker registration failed:', error);
+        });
+    }
+
+    let deferredPrompt;
+
+    window.addEventListener('beforeinstallprompt', (event) => {
+      event.preventDefault();
+      deferredPrompt = event;
+      showInstallButton();
+    });
+
+    function showInstallButton() {
+      const installButton = document.createElement('button');
+      installButton.innerText = 'Uygulamayı Yükle';
+      installButton.style.position = 'fixed';
+      installButton.style.bottom = '20px';
+      installButton.style.right = '20px';
+      installButton.style.zIndex = '1000';
+      installButton.style.padding = '10px 20px';
+      installButton.style.backgroundColor = '#200c5e';
+      installButton.style.color = '#fff';
+      installButton.style.border = 'none';
+      installButton.style.borderRadius = '5px';
+      installButton.style.cursor = 'pointer';
+
+      installButton.addEventListener('click', () => {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            console.log('Kullanıcı uygulamayı yüklemeyi kabul etti');
+          } else {
+            console.log('Kullanıcı uygulamayı yüklemeyi reddetti');
+          }
+          deferredPrompt = null;
+        });
+      });
+
+      document.body.appendChild(installButton);
+    }
+  </script>
+   <script>
+       window.addEventListener('resize', function() {
+            if (resultChart) {
+                resultChart.resize();
+            }
+        });
+        $(document).ready(function () {
+            // Gün, ay ve yıl seçeneklerini doldur
+            for (let i = 1; i <= 31; i++) {
+                $('#day').append(`<option value="${i}">${i}</option>`);
+            }
+            const months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+            months.forEach((month, index) => {
+                $('#month').append(`<option value="${index + 1}">${month}</option>`);
+            });
+            for (let i = 2025; i <= 2040; i++) {
+                $('#year').append(`<option value="${i}">${i}</option>`);
+            }
+
+            // Benzer takımı bulan kod
+            let evTeams = [];  // Ev takımları listesi
+            let misafirTeams = [];  // Misafir takımları listesi
+            let resultChart = null;
+
+            function levenshtein(a, b) {
+                const matrix = Array(a.length + 1).fill(null).map(() =>
+                    Array(b.length + 1).fill(null));
+
+                for (let i = 0; i <= a.length; i++) {
+                    matrix[i][0] = i;
+                }
+                for (let j = 0; j <= b.length; j++) {
+                    matrix[0][j] = j;
+                }
+
+                for (let i = 1; i <= a.length; i++) {
+                    for (let j = 1; j <= b.length; j++) {
+                        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j - 1] + cost
+                        );
+                    }
+                }
+                return matrix[a.length][b.length];
+            }
+
+            // En yakın eşleşmeyi bulan fonksiyon
+            function findClosestTeam(inputTeam, teamList) {
+                let closestTeam = "";
+                let minDistance = Infinity;
+
+                teamList.forEach(team => {
+                    let distance = levenshtein(inputTeam, team);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestTeam = team;
+                    }
+                });
+
+                return closestTeam;
+            }
+
+            // Değiştir butonuna tıklama olayı ekle
+            $('#swapTeams').on('click', function () {
+                let evValue = $('#ev').val().trim(); // Ev takımının seçili değerini al
+                let misafirValue = $('#misafir').val().trim(); // Misafir takımının seçili değerini al
+
+                console.log("Ev Seçili Takım:", evValue);
+                console.log("Misafir Seçili Takım:", misafirValue);
+
+                // Eğer listeler dolu değilse işlemi yapma
+                if (evTeams.length === 0 || misafirTeams.length === 0) {
+                    console.log("Takım listeleri boş!");
+                    return;
+                }
+
+                // En yakın takım eşleşmelerini bul
+                let newEvValue = findClosestTeam(misafirValue, evTeams);
+                let newMisafirValue = findClosestTeam(evValue, misafirTeams);
+
+                console.log("Yeni Ev Takımı:", newEvValue);
+                console.log("Yeni Misafir Takımı:", newMisafirValue);
+
+                // Değerleri değiştir
+                $('#ev').val(newEvValue);
+                $('#misafir').val(newMisafirValue);
+            });
+
+            // Maç türü seçildiğinde çalıştır
+            $('#matchType').on('change', function () {
+                if ($(this).val() === 'all') {
+                    $('#dateSelection').removeClass('hidden');
+                    $('#teamSelection').addClass('hidden');
+                    $('#customScoreSelection').addClass('hidden');
+                    $('#oddsAnalysisSelection').addClass('hidden');
+                    $('#addOddsAnalysis').closest('.form-row').addClass('hidden');
+                } else if ($(this).val() === 'select') {
+                    $('#dateSelection').addClass('hidden');
+                    $('#teamSelection').removeClass('hidden');
+                    $('#customScoreSelection').addClass('hidden');
+                    $('#oddsAnalysisSelection').addClass('hidden');
+                    $('#addOddsAnalysis').closest('.form-row').addClass('hidden');
+
+                    $.ajax({
+                        url: '/get_teams',
+                        type: 'GET',
+                        success: function (response) {
+                            // Ev ve misafir takımlarını alfabetik olarak sırala
+                            response.ev.sort((a, b) => a.localeCompare(b));
+                            response.misafir.sort((a, b) => a.localeCompare(b));
+
+                            // Listeleri sakla
+                            evTeams = response.ev;
+                            misafirTeams = response.misafir;
+
+                            $('#ev').empty();
+                            $('#misafir').empty();
+                            response.ev.forEach(team => {
+                                $('#ev').append(`<option value="${team}">${team}</option>`);
+                            });
+                            response.misafir.forEach(team => {
+                                $('#misafir').append(`<option value="${team}">${team}</option>`);
+                            });
+                        },
+                        error: function () {
+                            alert('Takımlar alınırken bir hata oluştu.');
+                        }
+                    });
+                } else if ($(this).val() === 'customScore') {
+                    $('#dateSelection').addClass('hidden');
+                    $('#teamSelection').addClass('hidden');
+                    $('#customScoreSelection').removeClass('hidden');
+                    $('#oddsAnalysisSelection').addClass('hidden');
+                    $('#addOddsAnalysis').closest('.form-row').addClass('hidden');
+                } else if ($(this).val() === 'oddsAnalysis') {
+                    $('#dateSelection').removeClass('hidden'); // Tarih seçimini göster
+                    $('#teamSelection').addClass('hidden');
+                    $('#customScoreSelection').addClass('hidden');
+                    $('#oddsAnalysisSelection').removeClass('hidden');
+                    $('#addOddsAnalysis').closest('.form-row').removeClass('hidden');
+                }
+            });
+
+             // Ekle butonuna tıklama olayı ekle
+            $('#addCustomScore').on('click', function () {
+                const newScoreSet = `
+                    <div class="form-row custom-score-row">
+                        <div class="form-group col-md-3">
+                            <label for="iy1">İY-1 Skor</label>
+                            <input type="number" class="form-control iy1" min="0">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="iy2">İY-2 Skor</label>
+                            <input type="number" class="form-control iy2" min="0">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="ms1">MS-1 Skor</label>
+                            <input type="number" class="form-control ms1" min="0">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="ms2">MS-2 Skor</label>
+                            <input type="number" class="form-control ms2" min="0">
+                        </div>
+                        <div class="form-group col-md-2 d-flex align-items-center justify-content-center">
+                            <button type="button" class="btn btn-danger btn-sm removeCustomScore">Sil</button>
+                        </div>
+                    </div>
+                `;
+                $('#customScoreContainer').append(newScoreSet);
+            });
+
+            // Sil butonuna tıklama olayı ekle (dinamik olarak eklenen elementler için)
+            $(document).on('click', '.removeCustomScore', function () {
+                $(this).closest('.custom-score-row').remove();
+            });
+
+            // Ekle butonuna tıklama olayı ekle
+            $('#addOddsAnalysis').on('click', function () {
+                const newOddsAnalysis = `
+                    <div class="form-row odds-analysis-row">
+                        <div class="form-group col-md-5">
+                            <label for="oddsType">Bahis Türü</label>
+                            <select class="form-control oddsType">
+                                <option value="ms1">Maç Sonucu 1</option>
+                                <option value="ms2">Maç Sonucu 2</option>
+                                <option value="msx">Maç Sonucu Beraberlik</option>
+                                <option value="iys1">İlk Yarı Sonucu 1</option>
+                                <option value="iys2">İlk Yarı Sonucu 2</option>
+                                <option value="iysx">İlk Yarı Sonucu Beraberlik</option>
+                                <option value="kgvar">Karşılıklı Gol Var</option>
+                                <option value="kgyok">Karşılıklı Gol Yok</option>
+                                <option value="iybirbucukalt">İlk Yarı Toplam Gol 1.5 Alt</option>
+                                <option value="iybirbucukust">İlk Yarı Toplam Gol 1.5 Üst</option>
+                                <option value="tgbirbucukalt">Toplam Gol 1.5 Alt</option>
+                                <option value="tgbirbucukust">Toplam Gol 1.5 Üst</option>
+                                <option value="tgikibucukalt">Toplam Gol 2.5 Alt</option>
+                                <option value="tgikibucukust">Toplam Gol 2.5 Üst</option>
+                                <option value="tgucbucukalt">Toplam Gol 3.5 Alt</option>
+                                <option value="tgucbucukust">Toplam Gol 3.5 Üst</option>
+                                <option value="tgsifrbir">Toplam Gol 0-1</option>
+                                <option value="tgikiuc">Toplam Gol 2-3</option>
+                                <option value="tgdortalti">Toplam Gol 4-6</option>
+                                <option value="tgyedi">Toplam Gol 7+</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-5">
+                            <label for="oddsValue">Oran</label>
+                            <input type="text" class="form-control oddsValue" placeholder="Oran girin (örneğin: 1,75)">
+                        </div>
+                        <div class="form-group col-md-2 d-flex align-items-center justify-content-center">
+                            <button type="button" class="btn btn-danger btn-sm removeOddsAnalysis">Sil</button>
+                        </div>
+                    </div>
+                `;
+                $('#oddsAnalysisSelection').append(newOddsAnalysis);
+            });
+
+            // Sil butonuna tıklama olayı ekle (dinamik olarak eklenen elementler için)
+            $(document).on('click', '.removeOddsAnalysis', function () {
+                $(this).closest('.odds-analysis-row').remove();
+            });
+
+            // Form gönderildiğinde
+            $('#dateForm').on('submit', function (e) {
+                e.preventDefault();
+                const matchType = $('#matchType').val();
+                let data = {};
+
+                if (matchType === 'all') {
+                    const day = $('#day').val();
+                    const month = $('#month').val();
+                    const year = $('#year').val();
+                    data = { day: day, month: month, year: year };
+                } else if (matchType === 'select') {
+                    const ev = $('#ev').val();
+                    const misafir = $('#misafir').val();
+                    data = { ev: ev, misafir: misafir };
+                } else if (matchType === 'customScore') {
+                    const customScores = [];
+                    $('.custom-score-row').each(function () {
+                        const iy1 = $(this).find('.iy1').val();
+                        const iy2 = $(this).find('.iy2').val();
+                        const ms1 = $(this).find('.ms1').val();
+                        const ms2 = $(this).find('.ms2').val();
+                        customScores.push({ iy1: iy1, iy2: iy2, ms1: ms1, ms2: ms2 });
+                    });
+                    data = { customScores: customScores };
+                } else if (matchType === 'oddsAnalysis') {
+                    const day = $('#day').val();
+                    const month = $('#month').val();
+                    const year = $('#year').val();
+
+                    const oddsAnalysisData = [];
+                    $('.odds-analysis-row').each(function () {
+                        const oddsType = $(this).find('.oddsType').val();
+                        const oddsValue = $(this).find('.oddsValue').val().replace(',', '.');
+                        oddsAnalysisData.push({
+                            oddsType: oddsType,
+                            oddsValue: parseFloat(oddsValue),
+                            day: day,
+                            month: month,
+                            year: year
+                        });
+                    });
+                    data = { oddsAnalysis: oddsAnalysisData };
+                }
+
+                $.ajax({
+                    url: '/get_matches',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+                    success: function (response) {
+                        $('#matches').empty();
+                        if (response.length > 0) {
+                            response.forEach(match => {
+                                const iyScores = match.iy.split(' - ');
+                                const msScores = match.ms.split(' - ');
+
+                                $('#matches').append(`
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card match-card" data-ev="${match.ev}" data-misafir="${match.misafir}">
+                                            <div class="card-body">
+                                                <h5 class="card-title">${match.ev} vs ${match.misafir}</h5>
+                                                <div class="match-info">
+                                                    <div>${match.ev}</div>
+                                                    <div>${match.misafir}</div>
+                                                </div>
+                                                <div class="match-score">
+                                                    <div>İY: ${iyScores[0]}</div>
+                                                    <div>İY: ${iyScores[1]}</div>
+                                                </div>
+                                                <div class="match-ms-score">
+                                                    <div>MS: ${msScores[0]}</div>
+                                                    <div>MS: ${msScores[1]}</div>
+                                                </div>
+                                                <p class="card-text">Saat: ${match.saat}</p>
+                                                <p class="card-text text-right">${match.tarih}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `);
+                            });
+
+                            // Sonuçları analiz et ve grafik oluştur
+                            analyzeAndDisplayResults(response);
+
+                            function getTurkishLabel(key) {
+                                const labels = {
+                                    'ms1': 'Maç Sonucu 1',
+                                    'ms2': 'Maç Sonucu 2',
+                                    'msx': 'Maç Sonucu Beraberlik',
+                                    'iys1': 'İlk Yarı Sonucu 1',
+                                    'iys2': 'İlk Yarı Sonucu 2',
+                                    'iysx': 'İlk Yarı Sonucu Beraberlik',
+                                    'kgvar': 'Karşılıklı Gol Var',
+                                    'kgyok': 'Karşılıklı Gol Yok',
+                                    'iybirbucukalt': 'İlk Yarı Toplam Gol 1.5 Alt',
+                                    'iybirbucukust': 'İlk Yarı Toplam Gol 1.5 Üst',
+                                    'tgbirbucukalt': 'Toplam Gol 1.5 Alt',
+                                    'tgbirbucukust': 'Toplam Gol 1.5 Üst',
+                                    'tgikibucukalt': 'Toplam Gol 2.5 Alt',
+                                    'tgikibucukust': 'Toplam Gol 2.5 Üst',
+                                    'tgucbucukalt': 'Toplam Gol 3.5 Alt',
+                                    'tgucbucukust': 'Toplam Gol 3.5 Üst',
+                                    'tgsifrbir': 'Toplam Gol 0-1',
+                                    'tgikiuc': 'Toplam Gol 2-3',
+                                    'tgdortalti': 'Toplam Gol 4-6',
+                                    'tgyedi': 'Toplam Gol 7+'
+                                };
+                                return labels[key] || key; // Eğer key listede yoksa, key'i olduğu gibi döndür
+                            }
+
+                            // Maç kartlarına tıklama olayı ekle
+                            $('.match-card').on('click', function () {
+                                const ev = $(this).data('ev');
+                                const misafir = $(this).data('misafir');
+
+                                const iyScores = $(this).find('.match-score div').map(function () {
+                                    return $(this).text().split(': ')[1];
+                                }).get();
+
+                                const msScores = $(this).find('.match-ms-score div').map(function () {
+                                    return $(this).text().split(': ')[1];
+                                }).get();
+
+                                const iyS1 = parseInt(iyScores[0]);
+                                const iyS2 = parseInt(iyScores[1]);
+                                const toplamIY = iyS1 + iyS2;
+
+                                const msS1 = parseInt(msScores[0]);
+                                const msS2 = parseInt(msScores[1]);
+                                const toplamMS = msS1 + msS2;
+
+                                $.ajax({
+                                    url: '/get_match_details',
+                                    type: 'POST',
+                                    contentType: 'application/json',
+                                    data: JSON.stringify({ ev: ev, misafir: misafir }),
+                                    success: function (response) {
+                                        // Sıralama için istediğiniz anahtar sırasını belirleyin
+                                        const sortOrder = [
+                                            'iys1', 'iys2', 'iysx', 'iybirbucukalt', 'iybirbucukust',
+                                            'ms1', 'ms2', 'msx', 'kgvar', 'kgyok', 'tgbirbucukalt',
+                                            'tgbirbucukust', 'tgikibucukalt', 'tgikibucukust',
+                                            'tgucbucukalt', 'tgucbucukust', 'tgsifrbir', 'tgikiuc',
+                                            'tgdortalti', 'tgyedi'
+                                        ];
+
+                                        let detailHtml = '<div class="row">';
+
+                                        // Veriyi sıralama
+                                        sortOrder.forEach(function (key) {
+                                            if (response.details.hasOwnProperty(key)) {
+                                                let cardClass = '';
+                                                let colorClass = '';
+
+                                                if (key === 'iys1') {
+                                                    cardClass = iyS1 > iyS2 ? 'card-success' : (iyS1 === iyS2 ? 'card-danger' : 'card-danger');
+                                                } else if (key === 'iys2') {
+                                                    cardClass = iyS2 > iyS1 ? 'card-success' : (iyS2 === iyS1 ? 'card-danger' : 'card-danger');
+                                                } else if (key === 'iysx') {
+                                                    cardClass = iyS1 === iyS2 ? 'card-success' : 'card-danger';
+                                                } else if (key === 'iybirbucukalt') {
+                                                    cardClass = toplamIY <= 1 ? 'card-success' : 'card-danger';
+                                                } else if (key === 'iybirbucukust') {
+                                                    cardClass = toplamIY > 1 ? 'card-success' : 'card-danger';
+                                                } else if (key === 'ms1') {
+                                                    cardClass = msS1 > msS2 ? 'card-success' : (msS1 === msS2 ? 'card-danger' : 'card-danger');
+                                                } else if (key === 'ms2') {
+                                                    cardClass = msS2 > msS1 ? 'card-success' : (msS2 === msS1 ? 'card-danger' : 'card-danger');
+                                                } else if (key == 'kgvar') {
+                                                    cardClass = (msS1 > 0 && msS2 > 0) ? 'card-success' : 'card-danger';
+                                                } else if (key == 'kgyok') {
+                                                    cardClass = (msS1 === 0 || msS2 === 0) ? 'card-success' : 'card-danger';
+                                                }
+                                                else if (key === 'msx') {
+                                                    cardClass = msS1 === msS2 ? 'card-success' : 'card-danger';
+                                                } else if (key === 'tgbirbucukalt') {
+                                                    cardClass = toplamMS <= 1 ? 'card-success' : 'card-danger';
+                                                } else if (key === 'tgbirbucukust') {
+                                                    cardClass = toplamMS > 1 ? 'card-success' : 'card-danger';
+                                                } else if (key === 'tgikibucukalt') {
+                                                    cardClass = toplamMS <= 2 ? 'card-success' : 'card-danger';
+                                                } else if (key === 'tgikibucukust') {
+                                                    cardClass = toplamMS > 2 ? 'card-success' : 'card-danger';
+                                                } else if (key === 'tgucbucukalt') {
+                                                    cardClass = toplamMS <= 3 ? 'card-success' : 'card-danger';
+                                                } else if (key === 'tgucbucukust') {
+                                                    cardClass = toplamMS > 3 ? 'card-success' : 'card-danger';
+                                                } else if (key === 'tgsifrbir') {
+                                                    cardClass = (toplamMS >= 0 && toplamMS <= 1) ? 'card-success' : 'card-danger';
+                                                } else if (key === 'tgikiuc') {
+                                                    cardClass = (toplamMS >= 2 && toplamMS <= 3) ? 'card-success' : 'card-danger';
+                                                } else if (key === 'tgdortalti') {
+                                                    cardClass = (toplamMS >= 4 && toplamMS <= 6) ? 'card-success' : 'card-danger';
+                                                } else if (key === 'tgyedi') {
+                                                    cardClass = toplamMS >= 7 ? 'card-success' : 'card-danger';
+                                                }
+
+                                                detailHtml += `
+                                                    <div class="col-md-6">
+                                                        <div class="card mb-2 ${cardClass}">
+                                                            <div class="card-body">
+                                                                <h6 class="card-title">${getTurkishLabel(key)}</h6>
+                                                                <p class="card-text">${response.details[key]}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            }
+                                        });
+
+                                        detailHtml += '</div>';
+                                        $('#matchDetailBody').html(detailHtml);
+                                        $('#matchDetailModal').modal('show');
+                                    },
+                                    error: function () {
+                                        alert('Detaylar alınırken bir hata oluştu.');
+                                    }
+                                });
+                            });
+
+                            // Sonuçları analiz etmek ve grafikle göstermek için fonksiyon
+                            function analyzeAndDisplayResults(data) {
+                                let iyxCount = 0;
+                                let iys1Count = 0;
+                                let iys2Count = 0;
+                                let iybirbalt = 0;
+                                let iybirbust = 0;
+                                let ms1Count = 0;
+                                let ms2Count = 0;
+                                let msxCount = 0;
+                                let kgvarCount = 0;
+                                let kgyokCount = 0;
+                                let tbirbaltCount = 0;
+                                let tbirbustCount = 0;
+                                let tikibaltCount = 0;
+                                let tikibustCount = 0;
+                                let tucbaltCount = 0;
+                                let tucbustCount = 0;
+
+                                data.forEach(match => {
+                                    const iy = match.iy;
+                                    const ms = match.ms;
+
+                                    if (iy === '-' || ms === 'v') return; // Geçersiz sonuçları atla
+
+                                    const [iy1, iy2] = iy.split(' - ').map(Number);
+                                    const [ms1, ms2] = ms.split(' - ').map(Number);
+                                    const toplamIY = iy1 + iy2;
+                                    const toplamMS = ms1 + ms2;
+
+                                    // IY (İlk Yarı) Sonuçları
+                                    if (iy1 === iy2) iyxCount++;
+                                    else if (iy1 > iy2) iys1Count++;
+                                    else if (iy1 < iy2) iys2Count++;
+
+                                    // IY (İlk Yarı) 1,5 Alt/Üst Sonuçları
+                                    if (toplamIY <= 1) iybirbalt++;
+                                    else if (toplamIY > 1) iybirbust++;
+
+                                    // MS (Maç Sonu) Sonuçları
+                                    if (ms1 === ms2) msxCount++;
+                                    else if (ms1 > ms2) ms1Count++;
+                                    else if (ms1 < ms2) ms2Count++;
+
+                                    // Karşılıklı Gol Durumu
+                                    if (ms1 > 0 && ms2 > 0) kgvarCount++;
+                                    else if (ms1 == 0 || ms2 == 0) kgyokCount++;
+
+                                    // Birbuçuk Üst/Alt Durumu
+                                    if (toplamMS <= 1) tbirbaltCount++;
+                                    else if (toplamMS > 1) tbirbustCount++;
+
+                                    // İkibuçuk Üst/Alt Durumu
+                                    if (toplamMS <= 2) tikibaltCount++;
+                                    else if (toplamMS > 2) tikibustCount++;
+
+                                    // Üçbuçuk Üst/Alt Durumu
+                                    if (toplamMS <= 3) tucbaltCount++;
+                                    else if (toplamMS > 3) tucbustCount++;
+
+                                });
+
+                                const totalMatches = data.filter(match => match.iy !== '-' && match.ms !== 'v').length;
+
+                                const results = {
+                                    iyx: (iyxCount / totalMatches) * 100,
+                                    iys1: (iys1Count / totalMatches) * 100,
+                                    iys2: (iys2Count / totalMatches) * 100,
+                                    iybirbucukalt: (iybirbalt / totalMatches) * 100,
+                                    iyburbucukust: (iybirbust / totalMatches) * 100,
+                                    ms1: (ms1Count / totalMatches) * 100,
+                                    ms2: (ms2Count / totalMatches) * 100,
+                                    msx: (msxCount / totalMatches) * 100,
+                                    kgvar: (kgvarCount / totalMatches) * 100,
+                                    kgyok: (kgyokCount / totalMatches) * 100,
+                                    tbiralt: (tbirbaltCount / totalMatches) * 100,
+                                    tbirust: (tbirbustCount / totalMatches) * 100,
+                                    tikialt: (tikibaltCount / totalMatches) * 100,
+                                    tikiust: (tikibustCount / totalMatches) * 100,
+                                    tucalt: (tucbaltCount / totalMatches) * 100,
+                                    tucust: (tucbustCount / totalMatches) * 100,
+                                };
+
+                                const ctx = document.getElementById('resultChart').getContext('2d');
+
+                                // Eğer önceki bir grafik varsa, onu temizle
+                                if (resultChart) {
+                                    resultChart.destroy();
+                                }
+
+                                // Yeni grafik oluştur
+                                resultChart = new Chart(ctx, {
+                                    type: 'bar', // 'pie' yaparak pasta grafik de kullanabilirsiniz
+                                    data: {
+                                        labels: ['IYX Berabere', 'IYS1 Kazandı', 'IYS2 Kazandı', 'IY 1,5 Alt', 'IY 1,5 Üst', 'MS1 Kazandı', 'MS2 Kazandı', 'MSX Berabere', 'Karşılıklı Gol Var', 'Karşılıklı Gol Yok', '1,5 Alt', '1,5 Üst', '2,5 Alt', '2,5 Üst', '3,5 Alt', '3,5 Üst' ],
+                                        datasets: [{
+                                            label: 'Maç Sonuçları (%)',
+                                            data: [results.iyx, results.iys1, results.iys2, results.iybirbucukalt, results.iybirbucukust, results.ms1, results.ms2, results.msx, results.kgvar, results.kgyok, results.tbiralt, results.tbirust, results.tikialt, results.tikiust, results.tucalt, results.tucust],
+                                        backgroundColor: [
+                                        'rgba(139, 0, 0, 0.2)',       // Koyu Kırmızı
+                                        'rgba(0, 100, 0, 0.2)',       // Koyu Yeşil
+                                        'rgba(0, 0, 139, 0.2)',       // Koyu Mavi
+                                        'rgba(139, 69, 19, 0.2)',     // Koyu Kahverengi
+                                        'rgba(72, 61, 139, 0.2)',     // Koyu Mor
+                                        'rgba(139, 69, 19, 0.2)',     // Koyu Kahverengi
+                                        'rgba(72, 61, 139, 0.2)',     // Koyu Mor
+                                        'rgba(139, 0, 139, 0.2)',     // Koyu Macenta
+                                        'rgba(47, 79, 79, 0.2)',      // Koyu Gri
+                                        'rgba(85, 107, 47, 0.2)',     // Koyu Zeytin
+                                        'rgba(139, 0, 0, 0.2)',       // Koyu Kırmızı (Tekrar)
+                                        'rgba(0, 100, 0, 0.2)',       // Koyu Yeşil (Tekrar)
+                                        'rgba(0, 0, 139, 0.2)',       // Koyu Mavi (Tekrar)
+                                        'rgba(139, 69, 19, 0.2)',     // Koyu Kahverengi (Tekrar)
+                                        'rgba(72, 61, 139, 0.2)',     // Koyu Mor (Tekrar)
+                                        'rgba(139, 0, 139, 0.2)'      // Koyu Macenta (Tekrar)
+                                    ],
+                                    borderColor: [
+                                        'rgba(139, 0, 0, 1)',         // Koyu Kırmızı
+                                        'rgba(0, 100, 0, 1)',         // Koyu Yeşil
+                                        'rgba(0, 0, 139, 1)',         // Koyu Mavi
+                                        'rgba(139, 69, 19, 1)',       // Koyu Kahverengi
+                                        'rgba(72, 61, 139, 1)',       // Koyu Mor
+                                        'rgba(139, 69, 19, 1)',       // Koyu Kahverengi
+                                        'rgba(72, 61, 139, 1)',       // Koyu Mor
+                                        'rgba(139, 0, 139, 1)',       // Koyu Macenta
+                                        'rgba(47, 79, 79, 1)',        // Koyu Gri
+                                        'rgba(85, 107, 47, 1)',       // Koyu Zeytin
+                                        'rgba(139, 0, 0, 1)',         // Koyu Kırmızı (Tekrar)
+                                        'rgba(0, 100, 0, 1)',         // Koyu Yeşil (Tekrar)
+                                        'rgba(0, 0, 139, 1)',         // Koyu Mavi (Tekrar)
+                                        'rgba(139, 69, 19, 1)',       // Koyu Kahverengi (Tekrar)
+                                        'rgba(72, 61, 139, 1)',       // Koyu Mor (Tekrar)
+                                        'rgba(139, 0, 139, 1)'        // Koyu Macenta (Tekrar)
+                                    ],
+                                    borderWidth: 1
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,  // **Grafiği otomatik sığdır**
+                                        scales: {
+                                            y: {
+                                                beginAtZero: true,
+                                                max: 100 // Y eksenini %100 ile sınırla
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+
+                        } else {
+                            $('#matches').append('<p class="text-center">Bu kriterlere uygun maç bulunamadı.</p>');
+                        }
+                    },
+                    error: function () {
+                        $('#matches').html('<p class="text-center">Veriler alınırken bir hata oluştu.</p>');
+                    }
+                });
+            });
+        });
+    </script>
+<!-- Alt kısımdaki kart -->
+    <div class="card mx-3 my-5">
+        <div class="card-body">
+            <h5 class="card-title">Site İstatistikleri</h5>
+            <p class="card-text">Online Kullanıcılar: {{ active_users_count }}</p>
+            <p class="card-text">Kayıtlı Kullanıcılar: {{ total_users }}</p>
+            <p class="card-text">Günlük Ziyaretçi: {{ daily_visits }}</p>
+            <p class="card-text">Haftalık Ziyaretçi: {{ weekly_visits }}</p>
+            <p class="card-text">Aylık Ziyaretçi: {{ monthly_visits }}</p>
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: {{ daily_visits }}%;" aria-valuenow="{{ daily_visits }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
